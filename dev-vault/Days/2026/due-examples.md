@@ -1,0 +1,10 @@
+- [ ] 2026-06-09 : due today due:2026-06-09
+- [ ] 2026-06-09 : due tomorrow due:2026-06-10
+- [ ] 2026-06-09 : due today plus 3 due:2026-06-12
+- [ ] 2026-06-09 : due today plus 6 due:2026-06-15
+- [ ] 2026-06-09 : due this week due:2026-06-14
+- [ ] 2026-06-09 : due outside this week due:2026-06-16
+- [ ] 2026-06-09 : due this month due:2026-06-25
+- [ ] 2026-06-09 : due end of month due:2026-06-30
+- [ ] 2026-06-09 : due next month due:2026-07-03
+- [ ] 2026-06-09 : no due date sample
