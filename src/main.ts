@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
 	TodoPluginSettings,
@@ -36,8 +36,15 @@ export default class TodoPlugin extends Plugin {
 
 		this.registerMarkdownCodeBlockProcessor(
 			'todo-plugin',
-			async (source, el) => {
-				await renderTodoBlock(this.app, this.settings, source, el);
+			async (source, el, ctx) => {
+				try {
+					await renderTodoBlock(this.app, this.settings, source, el, ctx);
+				} catch (error) {
+					el.empty();
+					el.addClass('todo-plugin-view');
+					el.createEl('p', { text: getErrorMessage(error) });
+					console.error('Failed to render todo block', error);
+				}
 			},
 		);
 	}
@@ -49,6 +56,7 @@ export default class TodoPlugin extends Plugin {
 			await refreshTodoIndex(this.app, this.settings);
 		} catch (error) {
 			console.error('Failed to refresh todo index', error);
+			new Notice(`Todo Plugin: ${getErrorMessage(error)}`);
 		}
 	}
 
@@ -63,4 +71,8 @@ export default class TodoPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+}
+
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : 'An unexpected error occurred.';
 }

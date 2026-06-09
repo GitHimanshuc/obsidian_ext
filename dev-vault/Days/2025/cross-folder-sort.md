@@ -1,0 +1,4 @@
+- [ ] cross folder old project quick task @@ add:2025-04-01 09:00, due:2026-06-09 13:00, prio:25, est:10
+- [ ] cross folder high priority backlog @@ add:2025-04-02 09:00, due:2026-06-11 17:00, prio:90, est:60
+- [x] cross folder completed today @@ add:2025-04-03 09:00, due:2026-06-09 10:00, prio:40, est:30, done:2026-06-09 12:30
+- [x] cross folder completed last month @@ add:2025-04-04 09:00, due:2026-05-15 10:00, prio:40, est:30, done:2026-05-15 12:30

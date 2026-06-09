@@ -1,0 +1,9 @@
+- [ ] sort by low estimate first @@ add:2026-06-09 08:00, due:2026-06-09 18:00, prio:10, est:5
+- [ ] sort by high priority first @@ add:2026-06-09 08:05, due:2026-06-10 17:00, prio:95, est:30
+- [ ] effective priority urgent long task @@ add:2026-06-09 08:10, due:2026-06-09 12:00, prio:20, est:180
+- [ ] effective priority overdue floor @@ add:2026-06-08 08:15, due:2026-06-08 11:00, prio:1, est:45
+- [ ] effective priority no due goes after due tasks @@ add:2026-06-09 08:20, prio:100, est:15
+- [x] completed today early @@ add:2026-06-09 07:00, due:2026-06-09 09:00, prio:5, est:10, done:2026-06-09 09:15
+- [x] completed today late @@ add:2026-06-09 07:30, due:2026-06-09 10:00, prio:15, est:20, done:2026-06-09 16:45
+- [x] completed yesterday should not show today @@ add:2026-06-08 07:30, due:2026-06-08 10:00, prio:15, est:20, done:2026-06-08 16:45
+- [x] completed without done should not show today @@ add:2026-06-09 07:45, due:2026-06-09 11:00, prio:15, est:20

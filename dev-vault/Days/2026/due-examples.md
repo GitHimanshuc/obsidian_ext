@@ -1,3 +1,4 @@
+- [ ] due yesterday @@ add:2026-06-08 09:00, due:2026-06-09 17:00, prio:1, est:30
 - [ ] due today @@ add:2026-06-09 09:00, due:2026-06-09 17:00, prio:1, est:30
 - [ ] due tomorrow with higher priority @@ add:2026-06-09 09:05, due:2026-06-10 10:30, prio:80, est:45
 - [ ] due today plus 3 @@ add:2026-06-09 09:10, due:2026-06-12 14:00, prio:50, est:60
