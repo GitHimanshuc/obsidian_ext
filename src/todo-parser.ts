@@ -1,7 +1,6 @@
 import { isValidDateOnly } from './todo-date';
 import type { ParsedTodoLine } from './todo-types';
 
-const TASK_PATTERN = /^\s*- \[ \]\s+(.+)$/;
 const TASK_LINE_PATTERN = /^\s*- \[([^\]])\]\s+(.+)$/;
 const TASK_METADATA_SEPARATOR = '@@';
 
@@ -32,14 +31,6 @@ export function parseTodoLine(line: string): ParsedTodoLine | null {
 	);
 
 	return { ...metadata, completed: taskMarker !== ' ', text };
-}
-
-export function parseActiveTodoLine(line: string): ParsedTodoLine | null {
-	if (!TASK_PATTERN.test(line)) {
-		return null;
-	}
-
-	return parseTodoLine(line);
 }
 
 function parseTaskMetadata(

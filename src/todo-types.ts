@@ -7,6 +7,7 @@ export type DueFilter =
 export type DisplayField =
 	| 'task'
 	| 'due'
+	| 'due-hours'
 	| 'made'
 	| 'prio'
 	| 'est'

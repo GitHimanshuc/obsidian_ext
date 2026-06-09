@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App } from 'obsidian';
 import { getCurrentDateTime } from './todo-date';
 import { parseTodoLine } from './todo-parser';
 import type { TodoMatch } from './todo-types';
@@ -9,9 +9,8 @@ export async function completeSourceTask(
 	app: App,
 	task: TodoMatch,
 ): Promise<TodoMatch | null> {
-	const sourceFile = app.vault.getAbstractFileByPath(task.sourcePath);
-
-	if (!(sourceFile instanceof TFile)) {
+	const sourceFile = app.vault.getFileByPath(task.sourcePath);
+	if (!sourceFile) {
 		return null;
 	}
 

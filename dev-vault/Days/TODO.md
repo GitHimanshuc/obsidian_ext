@@ -72,6 +72,15 @@ sort: due
 display: task,due,prio,est,source
 ```
 
+### Due hours only
+
+```todo-plugin
+folders:
+- Days/2026
+sort: due
+display: task,due-hours,prio,est,source
+```
+
 ### Priority
 
 ```todo-plugin

@@ -1,4 +1,4 @@
-import { App, TFile, TFolder } from 'obsidian';
+import { App } from 'obsidian';
 import type { TodoPluginSettings } from './settings';
 import { normalizeOutputFile, normalizeScanFolders } from './todo-options';
 
@@ -27,14 +27,13 @@ async function writeOutputFile(
 	content: string,
 	app: App,
 ): Promise<void> {
-	const existing = app.vault.getAbstractFileByPath(outputFile);
-
-	if (existing instanceof TFile) {
+	const existing = app.vault.getFileByPath(outputFile);
+	if (existing) {
 		await app.vault.modify(existing, content);
 		return;
 	}
 
-	if (existing) {
+	if (app.vault.getFolderByPath(outputFile)) {
 		throw new Error(`Cannot write todo index: ${outputFile} is not a file.`);
 	}
 
@@ -49,13 +48,12 @@ async function ensureParentFolder(app: App, filePath: string): Promise<void> {
 	let currentPath = '';
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
-		const existing = app.vault.getAbstractFileByPath(currentPath);
 
-		if (existing instanceof TFolder) {
+		if (app.vault.getFolderByPath(currentPath)) {
 			continue;
 		}
 
-		if (existing) {
+		if (app.vault.getFileByPath(currentPath)) {
 			throw new Error(
 				`Cannot create folder ${currentPath}: a file exists at that path.`,
 			);

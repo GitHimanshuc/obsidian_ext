@@ -1,6 +1,6 @@
 import { App, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { getDateTimeTimestamp } from './todo-date';
-import { parseActiveTodoLine, parseTodoLine } from './todo-parser';
+import { parseTodoLine } from './todo-parser';
 import type { TodoMatch, TodoScanMode, TodoSort } from './todo-types';
 
 interface TodoFileReadTarget {
@@ -46,7 +46,7 @@ export function sortTodos(
 		.map(({ task }) => task);
 }
 
-function getSortKey(task: TodoMatch, sort: TodoSort, now: Date): number | string {
+function getSortKey(task: TodoMatch, sort: TodoSort, now: Date): number {
 	if (sort === 'prio') {
 		return task.priority ?? 0;
 	}
@@ -71,14 +71,10 @@ function getSortKey(task: TodoMatch, sort: TodoSort, now: Date): number | string
 }
 
 function compareSortKeys(
-	left: number | string,
-	right: number | string,
+	left: number,
+	right: number,
 	sort: TodoSort,
 ): number {
-	if (typeof left === 'string' || typeof right === 'string') {
-		return String(left).localeCompare(String(right));
-	}
-
 	if (sort === 'prio' || sort === 'effective-prio' || sort === 'done') {
 		return right - left;
 	}
@@ -95,7 +91,7 @@ function getEffectivePriority(task: TodoMatch, now: Date): number {
 	const hoursUntilDue = (dueTimestamp - now.getTime()) / (60 * 60 * 1000);
 	const basePriority = task.priority ?? 0;
 	const base = hoursUntilDue <= 0 ? Math.max(basePriority, 50) : basePriority;
-	const divisor = hoursUntilDue <= 0 ? 1 : Math.max(1, hoursUntilDue % 168);
+	const divisor = hoursUntilDue <= 0 ? 1 : Math.max(1, Math.min(hoursUntilDue, 168));
 	return base + (10 * (task.estimateMinutes ?? 0)) / divisor;
 }
 
@@ -140,9 +136,7 @@ function parseTodosInFile(
 			continue;
 		}
 
-		const parsedTask = mode === 'active'
-			? parseActiveTodoLine(line.trimStart())
-			: parseTodoLine(line.trimStart());
+		const parsedTask = parseTodoLine(line.trimStart());
 		if (!parsedTask) {
 			continue;
 		}
@@ -179,8 +173,8 @@ function getMarkdownFilesInFolders(app: App, scanFolders: string[]): TFile[] {
 	const files: TFile[] = [];
 
 	for (const folderPath of scanFolders) {
-		const folder = app.vault.getAbstractFileByPath(folderPath);
-		if (!(folder instanceof TFolder)) {
+		const folder = app.vault.getFolderByPath(folderPath);
+		if (!folder) {
 			console.warn(`Todo Plugin: scan folder not found: ${folderPath}`);
 			continue;
 		}

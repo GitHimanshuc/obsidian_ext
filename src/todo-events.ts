@@ -6,7 +6,11 @@ const completionListeners = new Set<CompletionListener>();
 
 export function emitTodoCompleted(task: TodoMatch): void {
 	for (const listener of completionListeners) {
-		listener(task);
+		try {
+			listener(task);
+		} catch (error) {
+			console.warn('Todo Plugin: completion listener failed.', error);
+		}
 	}
 }
 

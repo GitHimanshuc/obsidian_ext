@@ -1,8 +1,8 @@
 {
 	"id": "todo_plugin",
 	"name": "Todo Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "1.4.0",
+	"version": "1.0.1",
+	"minAppVersion": "1.5.7",
 	"description": "Collects dated unchecked tasks into a local rendered todo view.",
 	"author": "Himanshu",
 	"isDesktopOnly": false

@@ -62,7 +62,7 @@ Supported sort options:
 
 Effective priority is internal-only and used for ordering. Overdue tasks get at least base priority `50`; then the score is calculated from base priority, estimate minutes, and hours until due.
 
-Supported display fields: `task`, `due`, `made`, `prio`, `est`, `source`, `done`. The `task` field links to the source note.
+Supported display fields: `task`, `due`, `due-hours`, `made`, `prio`, `est`, `source`, `done`. Use `due-hours` for relative hours instead of date and time. The `task` field links to the source note.
 
 Completed-today blocks show checked tasks completed today:
 

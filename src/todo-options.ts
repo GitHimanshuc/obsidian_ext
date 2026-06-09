@@ -147,6 +147,15 @@ function parseDisplayField(value: string): DisplayField | null {
 	}
 
 	if (
+		normalized === 'due-hours' ||
+		normalized === 'duehours' ||
+		normalized === 'hours' ||
+		normalized === 'hours-due'
+	) {
+		return 'due-hours';
+	}
+
+	if (
 		normalized === 'made' ||
 		normalized === 'add' ||
 		normalized === 'added'

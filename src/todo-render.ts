@@ -5,7 +5,11 @@ import {
 	MarkdownRenderChild,
 } from 'obsidian';
 import { completeSourceTask } from './todo-completion';
-import { formatOptionalDateTime, getTodayDate } from './todo-date';
+import {
+	formatOptionalDateTime,
+	getDateTimeTimestamp,
+	getTodayDate,
+} from './todo-date';
 import { emitTodoCompleted, onTodoCompleted } from './todo-events';
 import {
 	getDueFilterBounds,
@@ -52,30 +56,29 @@ export async function renderTodoBlock(
 
 	const blockOptions = getBlockOptions(source, settings);
 	const outputFile = normalizeOutputFile(settings.outputFile);
-	let tasks = filterTasksByMode(
-		await collectTodos(
-			app,
-			blockOptions.scanFolders,
-			outputFile,
-			blockOptions.mode === 'completed-today' ? 'completed' : 'active',
-		),
-		blockOptions.mode,
-		getTodayDate(),
+	let tasks = await collectTodos(
+		app,
+		blockOptions.scanFolders,
+		outputFile,
+		blockOptions.mode === 'completed-today' ? 'completed' : 'active',
 	);
 	let activeFilter = blockOptions.filter;
 	let activeSort = getValidSort(blockOptions.sort, blockOptions.mode);
 
-	tasks = sortTodos(tasks, activeSort);
-
 	const controlsEl = el.createDiv();
-	const filterEl = controlsEl.createEl('select');
-	for (const filter of DUE_FILTERS) {
-		filterEl.createEl('option', {
-			text: filter.label,
-			value: filter.id,
-		});
+	let filterEl: HTMLSelectElement | null = null;
+	let offsetEl: HTMLInputElement | null = null;
+
+	if (blockOptions.mode === 'active') {
+		filterEl = controlsEl.createEl('select');
+		for (const filter of DUE_FILTERS) {
+			filterEl.createEl('option', {
+				text: filter.label,
+				value: filter.id,
+			});
+		}
+		filterEl.value = activeFilter;
 	}
-	filterEl.value = activeFilter;
 
 	const sortEl = controlsEl.createEl('select');
 	for (const sort of getSortOptions(blockOptions.mode)) {
@@ -86,31 +89,32 @@ export async function renderTodoBlock(
 	}
 	sortEl.value = activeSort;
 
-	const offsetEl = controlsEl.createEl('input', {
-		type: 'number',
-		value: String(blockOptions.todayOffset),
-	});
-	offsetEl.min = '0';
-	offsetEl.step = '1';
-	offsetEl.inputMode = 'numeric';
-	offsetEl.ariaLabel = 'Days from today';
+	if (blockOptions.mode === 'active') {
+		offsetEl = controlsEl.createEl('input', {
+			type: 'number',
+			value: String(blockOptions.todayOffset),
+		});
+		offsetEl.min = '0';
+		offsetEl.step = '1';
+		offsetEl.inputMode = 'numeric';
+		offsetEl.ariaLabel = 'Days from today';
+	}
 
 	const listRootEl = el.createDiv();
 	const renderList = () => {
 		const today = getTodayDate();
-		const todayOffset = getTodayOffset(offsetEl);
+		const todayOffset = offsetEl ? getTodayOffset(offsetEl) : 0;
 		const dueFilterBounds = getDueFilterBounds(activeFilter, today, todayOffset);
-		filterEl.style.display = blockOptions.mode === 'active' ? '' : 'none';
-		offsetEl.style.display =
-			blockOptions.mode === 'active' && activeFilter === 'today-plus-n'
-				? ''
-				: 'none';
-		const visibleTasks = sortTodos(
-			blockOptions.mode === 'active'
-				? tasks.filter((task) => matchesDueFilter(task, dueFilterBounds))
-				: tasks,
-			activeSort,
-		);
+		const visibleTasks = sortTodos(getVisibleTasks(
+			tasks,
+			blockOptions.mode,
+			dueFilterBounds,
+			today,
+		), activeSort);
+
+		if (offsetEl) {
+			offsetEl.style.display = activeFilter === 'today-plus-n' ? '' : 'none';
+		}
 
 		listRootEl.empty();
 		if (visibleTasks.length === 0) {
@@ -158,7 +162,7 @@ export async function renderTodoBlock(
 		}
 	};
 
-	filterEl.addEventListener('change', () => {
+	filterEl?.addEventListener('change', () => {
 		activeFilter = filterEl.value as DueFilter;
 		renderList();
 	});
@@ -167,24 +171,36 @@ export async function renderTodoBlock(
 		renderList();
 	});
 	const renderListDebounced = debounce(renderList, 150, true);
-	offsetEl.addEventListener('input', () => {
+	offsetEl?.addEventListener('input', () => {
 		renderListDebounced();
 	});
 
-	if (blockOptions.mode === 'completed-today' && ctx) {
+	if (ctx) {
 		const renderChild = new MarkdownRenderChild(el);
 		renderChild.register(
 			onTodoCompleted((task) => {
-				if (
-					task.completedDate !== getTodayDate() ||
-					!isTaskInScanFolders(task, blockOptions.scanFolders) ||
-					tasks.some((candidate) => isSameSourceTask(candidate, task))
-				) {
+				if (!isTaskInScanFolders(task, blockOptions.scanFolders)) {
 					return;
 				}
 
-				tasks = sortTodos([...tasks, task], activeSort);
-				renderList();
+				if (blockOptions.mode === 'active') {
+					const nextTasks = tasks.filter(
+						(candidate) => !isSameSourceTask(candidate, task),
+					);
+					if (nextTasks.length !== tasks.length) {
+						tasks = nextTasks;
+						renderList();
+					}
+					return;
+				}
+
+				if (
+					task.completedDate === getTodayDate() &&
+					!tasks.some((candidate) => isSameSourceTask(candidate, task))
+				) {
+					tasks = [...tasks, task];
+					renderList();
+				}
 			}),
 		);
 		ctx.addChild(renderChild);
@@ -193,16 +209,17 @@ export async function renderTodoBlock(
 	renderList();
 }
 
-function filterTasksByMode(
+function getVisibleTasks(
 	tasks: TodoMatch[],
 	mode: 'active' | 'completed-today',
+	dueFilterBounds: ReturnType<typeof getDueFilterBounds>,
 	today: string,
 ): TodoMatch[] {
 	if (mode === 'completed-today') {
 		return tasks.filter((task) => task.completedDate === today);
 	}
 
-	return tasks;
+	return tasks.filter((task) => matchesDueFilter(task, dueFilterBounds));
 }
 
 function getSortOptions(mode: 'active' | 'completed-today'): TodoSortOption[] {
@@ -293,6 +310,10 @@ function getDisplayFieldText(task: TodoMatch, field: DisplayField): string {
 		return formatOptionalDateTime(task.dueDate, task.dueTime);
 	}
 
+	if (field === 'due-hours') {
+		return formatDueHours(task);
+	}
+
 	if (field === 'made') {
 		return `made ${formatOptionalDateTime(task.addedDate, task.addedTime)}`;
 	}
@@ -309,4 +330,18 @@ function getDisplayFieldText(task: TodoMatch, field: DisplayField): string {
 	}
 
 	return task.estimateMinutes ? `${task.estimateMinutes}m` : 'est -';
+}
+
+function formatDueHours(task: TodoMatch): string {
+	const dueTimestamp = getDateTimeTimestamp(task.dueDate, task.dueTime, '23:59');
+	if (dueTimestamp === null) {
+		return 'due -';
+	}
+
+	const hoursUntilDue = (dueTimestamp - Date.now()) / (60 * 60 * 1000);
+	const absHours = Math.abs(hoursUntilDue);
+	const roundedHours = absHours < 1 ? '<1' : String(Math.ceil(absHours));
+	return hoursUntilDue < 0
+		? `overdue ${roundedHours}h`
+		: `due ${roundedHours}h`;
 }
