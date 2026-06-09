@@ -1,10 +1,10 @@
-import { Notice, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
 	TodoPluginSettings,
 	TodoSettingTab,
 } from './settings';
-import { refreshTodoIndex } from './todo-index';
+import { refreshTodoIndex, renderTodoBlock } from './todo-index';
 
 export default class TodoPlugin extends Plugin {
 	settings!: TodoPluginSettings;
@@ -21,20 +21,22 @@ export default class TodoPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new TodoSettingTab(this.app, this));
+
+		this.registerMarkdownCodeBlockProcessor(
+			'todo-plugin',
+			async (source, el) => {
+				await renderTodoBlock(this.app, this.settings, source, el);
+			},
+		);
 	}
 
 	onunload() {}
 
 	async refreshTodoIndex() {
 		try {
-			const taskCount = await refreshTodoIndex(this.app, this.settings);
-			const suffix = taskCount === 1 ? '' : 's';
-			new Notice(`Todo index refreshed: ${taskCount} task${suffix} found.`);
+			await refreshTodoIndex(this.app, this.settings);
 		} catch (error) {
 			console.error('Failed to refresh todo index', error);
-			const message =
-				error instanceof Error ? error.message : 'Failed to refresh todo index.';
-			new Notice(message);
 		}
 	}
 

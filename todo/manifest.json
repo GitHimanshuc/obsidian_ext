@@ -3,7 +3,7 @@
 	"name": "Todo Plugin",
 	"version": "1.0.0",
 	"minAppVersion": "1.4.0",
-	"description": "A simple todo plugin for Obsidian.",
+	"description": "Collects dated unchecked tasks into a local rendered todo view.",
 	"author": "Himanshu",
 	"isDesktopOnly": false
 }
