@@ -23,6 +23,7 @@ import type {
 	DisplayField,
 	DueFilter,
 	DueFilterOption,
+	TodoMode,
 	TodoSort,
 	TodoSortOption,
 	TodoMatch,
@@ -49,7 +50,7 @@ export async function renderTodoBlock(
 	settings: TodoPluginSettings,
 	source: string,
 	el: HTMLElement,
-	ctx?: MarkdownPostProcessorContext,
+	ctx: MarkdownPostProcessorContext,
 ): Promise<void> {
 	el.empty();
 	el.addClass('todo-plugin-view');
@@ -113,7 +114,10 @@ export async function renderTodoBlock(
 		), activeSort);
 
 		if (offsetEl) {
-			offsetEl.style.display = activeFilter === 'today-plus-n' ? '' : 'none';
+			offsetEl.classList.toggle(
+				'todo-plugin-hidden',
+				activeFilter !== 'today-plus-n',
+			);
 		}
 
 		listRootEl.empty();
@@ -175,43 +179,45 @@ export async function renderTodoBlock(
 		renderListDebounced();
 	});
 
-	if (ctx) {
-		const renderChild = new MarkdownRenderChild(el);
-		renderChild.register(
-			onTodoCompleted((task) => {
-				if (!isTaskInScanFolders(task, blockOptions.scanFolders)) {
-					return;
-				}
+	const renderChild = new MarkdownRenderChild(el);
+	renderChild.register(
+		onTodoCompleted((task) => {
+			if (!isTaskInScanFolders(task, blockOptions.scanFolders)) {
+				return;
+			}
 
-				if (blockOptions.mode === 'active') {
-					const nextTasks = tasks.filter(
-						(candidate) => !isSameSourceTask(candidate, task),
-					);
-					if (nextTasks.length !== tasks.length) {
-						tasks = nextTasks;
-						renderList();
-					}
-					return;
-				}
-
-				if (
-					task.completedDate === getTodayDate() &&
-					!tasks.some((candidate) => isSameSourceTask(candidate, task))
-				) {
-					tasks = [...tasks, task];
+			if (blockOptions.mode === 'active') {
+				const nextTasks = tasks.filter(
+					(candidate) => !isSameSourceTask(candidate, task),
+				);
+				if (nextTasks.length !== tasks.length) {
+					tasks = nextTasks;
 					renderList();
 				}
-			}),
-		);
-		ctx.addChild(renderChild);
+				return;
+			}
+
+			if (
+				task.completedDate === getTodayDate() &&
+				!tasks.some((candidate) => isSameSourceTask(candidate, task))
+			) {
+				tasks = [...tasks, task];
+				renderList();
+			}
+		}),
+	);
+
+	if (blockOptions.displayFields.includes('due-hours')) {
+		renderChild.registerInterval(window.setInterval(renderList, 60_000));
 	}
+	ctx.addChild(renderChild);
 
 	renderList();
 }
 
 function getVisibleTasks(
 	tasks: TodoMatch[],
-	mode: 'active' | 'completed-today',
+	mode: TodoMode,
 	dueFilterBounds: ReturnType<typeof getDueFilterBounds>,
 	today: string,
 ): TodoMatch[] {
@@ -222,7 +228,7 @@ function getVisibleTasks(
 	return tasks.filter((task) => matchesDueFilter(task, dueFilterBounds));
 }
 
-function getSortOptions(mode: 'active' | 'completed-today'): TodoSortOption[] {
+function getSortOptions(mode: TodoMode): TodoSortOption[] {
 	return mode === 'completed-today'
 		? SORT_OPTIONS
 		: SORT_OPTIONS.filter((sort) => sort.id !== 'done');
@@ -230,7 +236,7 @@ function getSortOptions(mode: 'active' | 'completed-today'): TodoSortOption[] {
 
 function getValidSort(
 	sort: TodoSort,
-	mode: 'active' | 'completed-today',
+	mode: TodoMode,
 ): TodoSort {
 	const sortOptions = getSortOptions(mode);
 	return sortOptions.some((option) => option.id === sort)
@@ -248,7 +254,29 @@ function isTaskInScanFolders(task: TodoMatch, scanFolders: string[]): boolean {
 }
 
 function isSameSourceTask(left: TodoMatch, right: TodoMatch): boolean {
-	return left.sourcePath === right.sourcePath && left.lineNumber === right.lineNumber;
+	return left.sourcePath === right.sourcePath && (
+		left.lineNumber === right.lineNumber ||
+		getSourceLineIdentity(left.sourceLine) === getSourceLineIdentity(right.sourceLine)
+	);
+}
+
+function getSourceLineIdentity(line: string): string {
+	const taskBody = line
+		.trimStart()
+		.replace(/^- \[[^\]]\]\s+/, '');
+	const separatorIndex = taskBody.indexOf('@@');
+	if (separatorIndex === -1) {
+		return taskBody.trim();
+	}
+
+	const text = taskBody.slice(0, separatorIndex).trim();
+	const metadata = taskBody
+		.slice(separatorIndex + 2)
+		.split(',')
+		.map((part) => part.trim())
+		.filter((part) => part && !/^(done|completed)\s*:/i.test(part))
+		.join(', ');
+	return `${text} @@ ${metadata}`;
 }
 
 function renderTaskFields(

@@ -1,6 +1,6 @@
 {
 	"name": "todo-plugin",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Local-first dated todo index for Obsidian.",
 	"main": "main.js",
 	"type": "module",

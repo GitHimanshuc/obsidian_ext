@@ -45,24 +45,34 @@ display: task,due,made,prio,est
 ```
 ````
 
-Supported filters:
+| Option | Values | Notes |
+| --- | --- | --- |
+| `folders` | vault folder paths | One folder per `- ` line, or comma-separated inline. Defaults to `Days`. |
+| `filter` | `today`, `today+n`, `this-week`, `this-month` | Applies to active blocks. Tasks without due dates stay visible. |
+| `sort` | `due`, `prio`, `est`, `effective-prio`, `done` | `done` is for completed-today blocks. |
+| `mode` | `active`, `completed-today` | Defaults to `active`. |
+| `display` | `task`, `due`, `due-hours`, `made`, `prio`, `est`, `source`, `done` | Comma-separated field list. |
 
-- `today`
-- `today+n`
-- `this-week`
-- `this-month`
-
-Supported sort options:
-
-- `due`: earliest due time first
-- `prio`: highest priority first
-- `est`: shortest estimated completion time first
-- `effective-prio`: internal priority score based on priority, estimate, and time until due
-- `done`: newest completion time first, for completed-today blocks
+| Sort | Order |
+| --- | --- |
+| `due` | Earliest due time first |
+| `prio` | Highest priority first |
+| `est` | Shortest estimated completion time first |
+| `effective-prio` | Highest internal score first |
+| `done` | Newest completion time first |
 
 Effective priority is internal-only and used for ordering. Overdue tasks get at least base priority `50`; then the score is calculated from base priority, estimate minutes, and hours until due.
 
-Supported display fields: `task`, `due`, `due-hours`, `made`, `prio`, `est`, `source`, `done`. Use `due-hours` for relative hours instead of date and time. The `task` field links to the source note.
+| Display Field | Output |
+| --- | --- |
+| `task` | Task text linked to the source note |
+| `due` | Due date and time |
+| `due-hours` | Relative hours until due, such as `due 5h` or `overdue 2h` |
+| `made` | Added date and time |
+| `prio` | Priority |
+| `est` | Estimate in minutes |
+| `source` | Source note link |
+| `done` | Completion date and time |
 
 Completed-today blocks show checked tasks completed today:
 
