@@ -1,2 +1,2 @@
-This is a placeholder note for plugin testing.
-- [ ] 2026-06-08 : This should not show 
+- [ ] 2026-06-09 : This should show up
+- [ ] This should not
