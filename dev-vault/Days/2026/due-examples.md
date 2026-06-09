@@ -1,10 +1,11 @@
-- [ ] 2026-06-09 : due today due:2026-06-09
-- [ ] 2026-06-09 : due tomorrow due:2026-06-10
-- [ ] 2026-06-09 : due today plus 3 due:2026-06-12
-- [ ] 2026-06-09 : due today plus 6 due:2026-06-15
-- [ ] 2026-06-09 : due this week due:2026-06-14
-- [ ] 2026-06-09 : due outside this week due:2026-06-16
-- [ ] 2026-06-09 : due this month due:2026-06-25
-- [ ] 2026-06-09 : due end of month due:2026-06-30
-- [ ] 2026-06-09 : due next month due:2026-07-03
-- [ ] 2026-06-09 : no due date sample
+- [ ] due today @@ add:2026-06-09 09:00, due:2026-06-09 17:00, prio:1, est:30
+- [ ] due tomorrow with higher priority @@ add:2026-06-09 09:05, due:2026-06-10 10:30, prio:80, est:45
+- [ ] due today plus 3 @@ add:2026-06-09 09:10, due:2026-06-12 14:00, prio:50, est:60
+- [ ] due today plus 6 @@ add:2026-06-09 09:15, due:2026-06-15 16:00, prio:20, est:90
+- [ ] due this week @@ add:2026-06-09 09:20, due:2026-06-14 12:00, prio:30, est:15
+- [ ] due outside this week @@ add:2026-06-09 09:25, due:2026-06-16 11:00, prio:10, est:120
+- [ ] due this month @@ add:2026-06-09 09:30, due:2026-06-25 17:00, prio:40, est:30
+- [ ] due end of month @@ add:2026-06-09 09:35, due:2026-06-30 17:00, prio:60, est:30
+- [ ] due next month @@ add:2026-06-09 09:40, due:2026-07-03 17:00, prio:70, est:30
+- [ ] no due date sample @@ add:2026-06-09 09:45, prio:1, est:30
+- [ ] only task text with marker @@

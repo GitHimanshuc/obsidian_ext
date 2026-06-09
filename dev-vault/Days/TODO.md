@@ -11,6 +11,7 @@ folders:
 ```todo-plugin
 folders:
 - Days/2026
+display: task,due,prio,est
 ```
 
 ## Due filter checks
@@ -21,6 +22,7 @@ folders:
 folders:
 - Days/2026
 filter: today+0
+display: task,due,est
 ```
 
 ### Today + 3
@@ -29,6 +31,7 @@ filter: today+0
 folders:
 - Days/2026
 filter: today+3
+display: due,task,prio,est
 ```
 
 ### This week
@@ -37,6 +40,7 @@ filter: today+3
 folders:
 - Days/2026
 filter: this-week
+display: task,due,est,prio
 ```
 
 ### This month
@@ -45,4 +49,5 @@ filter: this-week
 folders:
 - Days/2026
 filter: this-month
+display: due,made,task,prio,est
 ```

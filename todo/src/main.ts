@@ -4,7 +4,11 @@ import {
 	TodoPluginSettings,
 	TodoSettingTab,
 } from './settings';
-import { refreshTodoIndex, renderTodoBlock } from './todo-index';
+import {
+	getTodoTaskTemplate,
+	refreshTodoIndex,
+	renderTodoBlock,
+} from './todo-index';
 
 export default class TodoPlugin extends Plugin {
 	settings!: TodoPluginSettings;
@@ -17,6 +21,14 @@ export default class TodoPlugin extends Plugin {
 			name: 'Refresh todo index',
 			callback: async () => {
 				await this.refreshTodoIndex();
+			},
+		});
+
+		this.addCommand({
+			id: 'insert-todo-task-template',
+			name: 'Insert todo task template',
+			editorCallback: (editor) => {
+				editor.replaceSelection(getTodoTaskTemplate());
 			},
 		});
 

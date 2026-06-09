@@ -7,10 +7,10 @@ This is a local-first Obsidian plugin for collecting dated unchecked tasks into 
 The plugin scans configured vault folders for tasks matching:
 
 ```md
-- [ ] 202... due:YYYY-MM-DD
+- [ ] task text @@ add:YYYY-MM-DD HH:mm, due:YYYY-MM-DD HH:mm, prio:1, est:30
 ```
 
-The `due:YYYY-MM-DD` suffix is optional. Tasks without it always remain visible, including inside due-date filters.
+Fields after `@@` are optional. Tasks without a due date always remain visible, including inside due-date filters.
 
 The default scan folder is `Days`, and the default generated note is `Days/TODO.md`.
 
@@ -42,11 +42,25 @@ filter: today+3
 
 Supported block filters are `today+n`, `this-week`, and `this-month`.
 
+Blocks may also choose display fields and order:
+
+````md
+```todo-plugin
+folders:
+- Days/2026
+display: task,due,made,prio,est,source
+```
+````
+
+Supported display fields are `task`, `due`, `made`, `prio`, `est`, and `source`.
+
 ## UX Rules
 
 - Keep the generated note clean. Do not add visible HTML metadata comments to `TODO.md`.
 - Avoid routine success notifications. Use console logging for developer failures unless a user-facing error is clearly needed.
 - Task completion should happen from the rendered code block in Reading view and update the original source note.
+- The command palette should include `Insert todo task template`; it inserts the `@@` task format with defaults for due date/time, priority, and estimate.
+- The rendered `task` display field should link to the source note. Use `source` only when the file path should also be visible.
 - The rendered block should stay mobile-friendly: native controls, simple due filters, no dense toolbar.
 - Keep due filtering extensible; we expect to add more filter options later.
 

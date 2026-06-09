@@ -1,19 +1,35 @@
 import { App, normalizePath, TAbstractFile, TFile, TFolder } from 'obsidian';
 import type { TodoPluginSettings } from './settings';
 
-const TODO_PATTERN = /^\s*- \[ \] 202\d.*$/;
-const DUE_DATE_PATTERN = /\bdue:(\d{4}-\d{2}-\d{2})\b/i;
+const TASK_PATTERN = /^\s*- \[ \]\s+(.+)$/;
+const TASK_METADATA_SEPARATOR = '@@';
 const UNCHECKED_TASK_MARKER = /^(\s*- \[) \]/;
 
 type DueFilter = 'all' | 'today-plus-n' | 'this-week' | 'this-month';
+type DisplayField = 'task' | 'due' | 'made' | 'prio' | 'est' | 'source';
 
 interface TodoMatch {
+	addedDate: string | null;
+	addedTime: string | null;
 	dueDate: string | null;
+	dueTime: string | null;
+	estimateMinutes: number | null;
 	line: string;
 	lineNumber: number;
+	priority: number | null;
 	sourcePath: string;
 	sourceLine: string;
 	text: string;
+}
+
+interface ParsedTodoLine {
+	addedDate: string | null;
+	addedTime: string | null;
+	dueDate: string | null;
+	dueTime: string | null;
+	estimateMinutes: number | null;
+	text: string;
+	priority: number | null;
 }
 
 interface DueFilterOption {
@@ -22,6 +38,7 @@ interface DueFilterOption {
 }
 
 interface TodoBlockOptions {
+	displayFields: DisplayField[];
 	filter: DueFilter;
 	scanFolders: string[];
 	todayOffset: number;
@@ -33,9 +50,18 @@ interface ParsedDueFilter {
 }
 
 interface ParsedTodoBlock {
+	displayFields: DisplayField[];
 	filter: ParsedDueFilter | null;
 	folders: string[];
 }
+
+const DEFAULT_DISPLAY_FIELDS: DisplayField[] = [
+	'task',
+	'due',
+	'prio',
+	'est',
+	'source',
+];
 
 const DUE_FILTERS: DueFilterOption[] = [
 	{ id: 'all', label: 'All' },
@@ -43,6 +69,17 @@ const DUE_FILTERS: DueFilterOption[] = [
 	{ id: 'this-week', label: 'This week' },
 	{ id: 'this-month', label: 'This month' },
 ];
+
+export function getTodoTaskTemplate(date = new Date()): string {
+	const today = formatDateOnly(date);
+	return [
+		'- [ ] TODO @@',
+		`add:${today} ${formatTimeOnly(date)},`,
+		`due:${today} 17:00,`,
+		'prio:1,',
+		'est:30',
+	].join(' ');
+}
 
 export async function refreshTodoIndex(
 	app: App,
@@ -114,20 +151,13 @@ export async function renderTodoBlock(
 			const checkboxEl = itemEl.createEl('input', { type: 'checkbox' });
 			checkboxEl.addClass('task-list-item-checkbox');
 
-			itemEl.createSpan({ text: ` ${task.text} ` });
-			if (task.dueDate) {
-				itemEl.createSpan({ text: `due ${task.dueDate} ` });
-			}
-
-			const linkEl = itemEl.createEl('a', { text: task.sourcePath });
-			linkEl.href = '#';
-			linkEl.addEventListener('click', (event) => {
-				event.preventDefault();
-				void app.workspace.openLinkText(
-					task.sourcePath.replace(/\.md$/i, ''),
-					outputFile,
-				);
-			});
+			renderTaskFields(
+				itemEl,
+				task,
+				blockOptions.displayFields,
+				app,
+				outputFile,
+			);
 
 			checkboxEl.addEventListener('change', () => {
 				checkboxEl.disabled = true;
@@ -162,14 +192,102 @@ export async function renderTodoBlock(
 
 function sortTodos(tasks: TodoMatch[]): TodoMatch[] {
 	return tasks.sort((left, right) => {
-		const leftDueDate = left.dueDate ?? '9999-12-31';
-		const rightDueDate = right.dueDate ?? '9999-12-31';
+		const leftDueDateTime = getDueDateTimeSortValue(left);
+		const rightDueDateTime = getDueDateTimeSortValue(right);
 		return (
-			leftDueDate.localeCompare(rightDueDate) ||
+			leftDueDateTime.localeCompare(rightDueDateTime) ||
+			(right.priority ?? 0) - (left.priority ?? 0) ||
 			left.sourcePath.localeCompare(right.sourcePath) ||
 			left.lineNumber - right.lineNumber
 		);
 	});
+}
+
+function getDueDateTimeSortValue(task: TodoMatch): string {
+	if (!task.dueDate) {
+		return '9999-12-31 99:99';
+	}
+
+	return `${task.dueDate} ${task.dueTime ?? '99:99'}`;
+}
+
+function renderTaskFields(
+	itemEl: HTMLLIElement,
+	task: TodoMatch,
+	displayFields: DisplayField[],
+	app: App,
+	outputFile: string,
+): void {
+	itemEl.createSpan({ text: ' ' });
+
+	for (const [index, field] of displayFields.entries()) {
+		if (index > 0) {
+			itemEl.createSpan({ text: ' · ' });
+		}
+
+		if (field === 'source') {
+			renderSourceLink(itemEl, task.sourcePath, task.sourcePath, app, outputFile);
+			continue;
+		}
+
+		if (field === 'task') {
+			renderSourceLink(itemEl, task.text, task.sourcePath, app, outputFile);
+			continue;
+		}
+
+		itemEl.createSpan({ text: getDisplayFieldText(task, field) });
+	}
+
+	itemEl.createSpan({ text: ' ' });
+}
+
+function renderSourceLink(
+	itemEl: HTMLLIElement,
+	text: string,
+	sourcePath: string,
+	app: App,
+	outputFile: string,
+): void {
+	const linkEl = itemEl.createEl('a', { text });
+	linkEl.href = '#';
+	linkEl.addEventListener('click', (event) => {
+		event.preventDefault();
+		void app.workspace.openLinkText(
+			sourcePath.replace(/\.md$/i, ''),
+			outputFile,
+		);
+	});
+}
+
+function getDisplayFieldText(task: TodoMatch, field: DisplayField): string {
+	if (field === 'task') {
+		return task.text;
+	}
+
+	if (field === 'due') {
+		return formatOptionalDateTime(task.dueDate, task.dueTime);
+	}
+
+	if (field === 'made') {
+		return `made ${formatOptionalDateTime(task.addedDate, task.addedTime)}`;
+	}
+
+	if (field === 'prio') {
+		return `p${task.priority ?? '-'}`;
+	}
+
+	return task.estimateMinutes ? `${task.estimateMinutes}m` : 'est -';
+}
+
+function formatOptionalDateTime(
+	date: string | null,
+	time: string | null,
+): string {
+	if (!date) {
+		return '-';
+	}
+
+	return time ? `${date} ${time}` : date;
 }
 
 function matchesDueFilter(
@@ -204,23 +322,6 @@ function getTodayOffset(inputEl: HTMLInputElement): number {
 	}
 
 	return Math.floor(offset);
-}
-
-function getTaskText(line: string): string {
-	return line
-		.replace(/^- \[ \]\s*/, '')
-		.replace(DUE_DATE_PATTERN, '')
-		.replace(/\s{2,}/g, ' ')
-		.trim();
-}
-
-function getDueDate(line: string): string | null {
-	const dueDate = line.match(DUE_DATE_PATTERN)?.[1];
-	if (!dueDate || !isValidDateOnly(dueDate)) {
-		return null;
-	}
-
-	return dueDate;
 }
 
 function getTodayDate(): string {
@@ -261,9 +362,158 @@ function formatDateOnly(date: Date): string {
 	return `${year}-${month}-${day}`;
 }
 
+function formatTimeOnly(date: Date): string {
+	const hours = String(date.getHours()).padStart(2, '0');
+	const minutes = String(date.getMinutes()).padStart(2, '0');
+	return `${hours}:${minutes}`;
+}
+
 function isValidDateOnly(value: string): boolean {
 	const date = parseDateOnly(value);
 	return formatDateOnly(date) === value;
+}
+
+function parseTodoLine(line: string): ParsedTodoLine | null {
+	const taskMatch = line.match(TASK_PATTERN);
+	if (!taskMatch) {
+		return null;
+	}
+
+	const body = taskMatch[1]?.trim();
+	if (!body) {
+		return null;
+	}
+
+	const separatorIndex = body.indexOf(TASK_METADATA_SEPARATOR);
+	if (separatorIndex === -1) {
+		return null;
+	}
+
+	const text = body.slice(0, separatorIndex).trim();
+	if (!text) {
+		return null;
+	}
+
+	const metadata = parseTaskMetadata(
+		body.slice(separatorIndex + TASK_METADATA_SEPARATOR.length),
+	);
+
+	return { ...metadata, text };
+}
+
+function parseTaskMetadata(
+	rawMetadata: string,
+): Omit<ParsedTodoLine, 'text'> {
+	const metadata: Omit<ParsedTodoLine, 'text'> = {
+		addedDate: null,
+		addedTime: null,
+		dueDate: null,
+		dueTime: null,
+		estimateMinutes: null,
+		priority: null,
+	};
+
+	for (const rawPart of rawMetadata.split(',')) {
+		const part = rawPart.trim();
+		if (!part) {
+			continue;
+		}
+
+		const fieldMatch = part.match(/^([a-z]+)\s*:\s*(.+)$/i);
+		if (!fieldMatch) {
+			continue;
+		}
+
+		const key = fieldMatch[1]?.toLowerCase();
+		const value = fieldMatch[2]?.trim();
+		if (!key || !value) {
+			continue;
+		}
+
+		if (key === 'add' || key === 'added') {
+			const dateTime = parseDateTime(value);
+			if (dateTime) {
+				metadata.addedDate = dateTime.date;
+				metadata.addedTime = dateTime.time;
+			}
+			continue;
+		}
+
+		if (key === 'due') {
+			const dateTime = parseDateTime(value);
+			if (dateTime) {
+				metadata.dueDate = dateTime.date;
+				metadata.dueTime = dateTime.time;
+			}
+			continue;
+		}
+
+		if (key === 'prio' || key === 'priority') {
+			metadata.priority = parseIntegerInRange(value, 1, 100);
+			continue;
+		}
+
+		if (key === 'est' || key === 'estimate') {
+			metadata.estimateMinutes = parseEstimateMinutes(value);
+		}
+	}
+
+	return metadata;
+}
+
+function parseDateTime(value: string): { date: string; time: string | null } | null {
+	const match = value
+		.trim()
+		.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?$/);
+	const date = match?.[1];
+	const time = match?.[2] ?? null;
+
+	if (!date || !isValidDateOnly(date)) {
+		return null;
+	}
+
+	if (time && !isValidTimeOnly(time)) {
+		return null;
+	}
+
+	return { date, time };
+}
+
+function isValidTimeOnly(value: string): boolean {
+	const match = value.match(/^(\d{2}):(\d{2})$/);
+	const hours = Number(match?.[1]);
+	const minutes = Number(match?.[2]);
+	return (
+		Number.isInteger(hours) &&
+		Number.isInteger(minutes) &&
+		hours >= 0 &&
+		hours <= 23 &&
+		minutes >= 0 &&
+		minutes <= 59
+	);
+}
+
+function parseIntegerInRange(
+	value: string,
+	minimum: number,
+	maximum: number,
+): number | null {
+	const number = Number(value.trim());
+	if (!Number.isInteger(number) || number < minimum || number > maximum) {
+		return null;
+	}
+
+	return number;
+}
+
+function parseEstimateMinutes(value: string): number | null {
+	const match = value.trim().match(/^(\d+)(?:\s*m(?:in(?:s)?)?)?$/i);
+	const minutes = Number(match?.[1]);
+	if (!Number.isInteger(minutes) || minutes <= 0) {
+		return null;
+	}
+
+	return minutes;
 }
 
 async function collectTodos(
@@ -282,17 +532,25 @@ async function collectTodos(
 		const content = await app.vault.cachedRead(file);
 		const lines = content.split(/\r?\n/);
 		for (const [lineNumber, line] of lines.entries()) {
-			if (TODO_PATTERN.test(line)) {
-				const normalizedLine = line.trimStart();
-				tasks.push({
-					dueDate: getDueDate(normalizedLine),
-					line: normalizedLine,
-					lineNumber,
-					sourcePath: file.path,
-					sourceLine: line,
-					text: getTaskText(normalizedLine),
-				});
+			const normalizedLine = line.trimStart();
+			const parsedTask = parseTodoLine(normalizedLine);
+			if (!parsedTask) {
+				continue;
 			}
+
+			tasks.push({
+				addedDate: parsedTask.addedDate,
+				addedTime: parsedTask.addedTime,
+				dueDate: parsedTask.dueDate,
+				dueTime: parsedTask.dueTime,
+				estimateMinutes: parsedTask.estimateMinutes,
+				line: normalizedLine,
+				lineNumber,
+				priority: parsedTask.priority,
+				sourcePath: file.path,
+				sourceLine: line,
+				text: parsedTask.text,
+			});
 		}
 	}
 
@@ -440,6 +698,7 @@ function getBlockOptions(
 ): TodoBlockOptions {
 	const block = parseTodoBlock(source);
 	return {
+		displayFields: block.displayFields,
 		filter: block.filter?.filter ?? 'all',
 		scanFolders: normalizeScanFolders(
 			block.folders.length > 0 ? block.folders : settings.scanFolders,
@@ -449,6 +708,7 @@ function getBlockOptions(
 }
 
 function parseTodoBlock(source: string): ParsedTodoBlock {
+	let displayFields: DisplayField[] = DEFAULT_DISPLAY_FIELDS;
 	const folders: string[] = [];
 	let filter: ParsedDueFilter | null = null;
 	let readingFolderList = false;
@@ -466,6 +726,12 @@ function parseTodoBlock(source: string): ParsedTodoBlock {
 		}
 
 		readingFolderList = false;
+
+		const displayMatch = line.match(/^display\s*:\s*(.*)$/i);
+		if (displayMatch) {
+			displayFields = parseDisplayFields(displayMatch[1] ?? '');
+			continue;
+		}
 
 		const filterMatch = line.match(/^filter\s*:\s*(.*)$/i);
 		if (filterMatch) {
@@ -491,7 +757,54 @@ function parseTodoBlock(source: string): ParsedTodoBlock {
 		}
 	}
 
-	return { filter, folders };
+	return { displayFields, filter, folders };
+}
+
+function parseDisplayFields(value: string): DisplayField[] {
+	const fields = value
+		.split(',')
+		.map((field) => parseDisplayField(field))
+		.filter((field): field is DisplayField => field !== null);
+
+	return fields.length > 0 ? fields : DEFAULT_DISPLAY_FIELDS;
+}
+
+function parseDisplayField(value: string): DisplayField | null {
+	const normalized = value.trim().toLowerCase();
+
+	if (normalized === 'task' || normalized === 'text') {
+		return 'task';
+	}
+
+	if (normalized === 'due') {
+		return 'due';
+	}
+
+	if (
+		normalized === 'made' ||
+		normalized === 'add' ||
+		normalized === 'added'
+	) {
+		return 'made';
+	}
+
+	if (normalized === 'prio' || normalized === 'priority') {
+		return 'prio';
+	}
+
+	if (
+		normalized === 'est' ||
+		normalized === 'estimate' ||
+		normalized === 'estimated'
+	) {
+		return 'est';
+	}
+
+	if (normalized === 'source' || normalized === 'file') {
+		return 'source';
+	}
+
+	return null;
 }
 
 function parseDueFilter(value: string): ParsedDueFilter {
