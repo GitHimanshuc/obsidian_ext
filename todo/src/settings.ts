@@ -1,18 +1,20 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import MyPlugin from './main';
+import type TodoPlugin from './main';
 
-export interface MyPluginSettings {
-	mySetting: string;
+export interface TodoPluginSettings {
+	scanFolders: string[];
+	outputFile: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default',
+export const DEFAULT_SETTINGS: TodoPluginSettings = {
+	scanFolders: ['Days'],
+	outputFile: 'Days/TODO.md',
 };
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class TodoSettingTab extends PluginSettingTab {
+	plugin: TodoPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: TodoPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -23,14 +25,30 @@ export class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc("It's a secret")
+			.setName('Folders to scan')
+			.setDesc('One vault-relative folder path per line.')
+			.addTextArea((text) =>
+				text
+					.setPlaceholder('Days')
+					.setValue(this.plugin.settings.scanFolders.join('\n'))
+					.onChange(async (value) => {
+						this.plugin.settings.scanFolders = value
+							.split(/\r?\n/)
+							.map((folder) => folder.trim())
+							.filter(Boolean);
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Output file')
+			.setDesc('Vault-relative Markdown file to overwrite with collected todos.')
 			.addText((text) =>
 				text
-					.setPlaceholder('Enter your secret')
-					.setValue(this.plugin.settings.mySetting)
+					.setPlaceholder('Days/TODO.md')
+					.setValue(this.plugin.settings.outputFile)
 					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
+						this.plugin.settings.outputFile = value.trim();
 						await this.plugin.saveSettings();
 					}),
 			);
